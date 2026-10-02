@@ -1,6 +1,3 @@
-# aws-webapp-demo
-Demo code showcasing AWS web application deployment using module.
-
 <!-- BEGIN_TF_DOCS -->
 # AWS Native Secrets on AWS
 
@@ -142,15 +139,15 @@ Version: 0.0.1
 
 ### <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg)
 
-Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
+Source: ./modules/security-group
 
-Version: 0.0.2
+Version:
 
 ### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
 
-Source: terraform-aws-modules/security-group/aws
+Source: ./modules/security-group
 
-Version: ~> 5.0
+Version:
 
 ### <a name="module_vpc"></a> [vpc](#module\_vpc)
 
@@ -160,15 +157,15 @@ Version: 0.0.1
 
 ### <a name="module_web"></a> [web](#module\_web)
 
-Source: terraform-aws-modules/ec2-instance/aws
+Source: ./modules/ec2-instance
 
-Version: ~> 5.6
+Version:
 
 ### <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg)
 
-Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
+Source: ./modules/security-group
 
-Version: 0.0.2
+Version:
 
 ## Required Inputs
 

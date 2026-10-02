@@ -129,8 +129,7 @@ module "vpc" {
 ##############################################################################
 
 module "alb_sg" {
-  source  = "app.terraform.io/benoitblais-hashicorp/security-group/aws"
-  version = "0.0.2"
+  source = "./modules/security-group"
 
   name        = "alb-static-sg"
   description = "Security group for ALB allowing public HTTPS. HTTP is permitted only for 301 redirects."
@@ -146,8 +145,7 @@ module "alb_sg" {
 ##############################################################################
 
 module "web_sg" {
-  source  = "app.terraform.io/benoitblais-hashicorp/security-group/aws"
-  version = "0.0.2"
+  source = "./modules/security-group"
 
   name        = "web-static-sg"
   description = "Security group for web server allowing traffic only from ALB"
@@ -155,10 +153,10 @@ module "web_sg" {
 
   ingress_with_source_security_group_id = [
     {
-      from_port                = 8443
-      to_port                  = 8443
+      from_port                = 8080
+      to_port                  = 8080
       protocol                 = "tcp"
-      description              = "HTTPS from ALB"
+      description              = "HTTP from ALB"
       source_security_group_id = module.alb_sg.security_group_id
     }
   ]
@@ -215,8 +213,8 @@ module "alb" {
   target_groups = {
     web-static-tg = {
       name_prefix       = "webstc"
-      protocol          = "HTTPS"
-      port              = 8443
+      protocol          = "HTTP"
+      port              = 8080
       target_type       = "instance"
       create_attachment = false
     }
@@ -226,7 +224,7 @@ module "alb" {
 resource "aws_lb_target_group_attachment" "web_attachment" {
   target_group_arn = module.alb.target_groups["web-static-tg"].arn
   target_id        = module.web.id
-  port             = 8443
+  port             = 8080
 }
 
 ##############################################################################
@@ -325,8 +323,7 @@ data "aws_ami" "rhel9" {
 }
 
 module "web" {
-  source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "~> 5.6"
+  source = "./modules/ec2-instance"
 
   name = "web-static"
 
@@ -342,7 +339,6 @@ module "web" {
     db_name          = aws_db_instance.db.db_name
     db_user          = "dbadmin"
     db_password      = random_password.db_password.result
-    private_zone     = var.private_hosted_zone
   })
 
   user_data_replace_on_change = true
@@ -365,8 +361,7 @@ module "web" {
 ##############################################################################
 
 module "db_sg" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 5.0"
+  source = "./modules/security-group"
 
   name        = "db-static-sg"
   description = "Security group for RDS allowing Web Server and Admin access"
