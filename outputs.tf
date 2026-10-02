@@ -1,6 +1,6 @@
 output "db_credentials_secret_arn" {
   description = "ARN of the Secrets Manager secret containing the RDS database credentials"
-  value       = aws_secretsmanager_secret.db_credentials.arn
+  value       = module.db.db_credentials_secret_arn
 }
 
 output "linux_credentials_secret_arn" {
@@ -10,7 +10,7 @@ output "linux_credentials_secret_arn" {
 
 output "rds_endpoint" {
   description = "The endpoint of the RDS instance"
-  value       = aws_db_instance.db.endpoint
+  value       = module.db.db_instance_endpoint
 }
 
 output "web_public_ip" {

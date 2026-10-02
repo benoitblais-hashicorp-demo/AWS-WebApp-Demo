@@ -1,33 +1,3 @@
-##############################################################################
-# AWS Secrets Manager — Core Configuration
-# Stores secrets natively in AWS: DB password.
-##############################################################################
-
-resource "random_password" "db_password" {
-  length           = 24
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "aws_secretsmanager_secret" "db_credentials" {
-  name        = "demo/database/web-static"
-  description = "RDS PostgreSQL master credentials for the demo database"
-
-  recovery_window_in_days = 0 # Immediate deletion for demo cleanup
-}
-
-resource "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = aws_secretsmanager_secret.db_credentials.id
-  secret_string = jsonencode({
-    username = "dbadmin"
-    password = random_password.db_password.result
-    host     = aws_db_instance.db.address
-    port     = tostring(aws_db_instance.db.port)
-    dbname   = aws_db_instance.db.db_name
-  })
-
-  depends_on = [aws_db_instance.db]
-}
 
 ##############################################################################
 # Route53 Zone Data Discovery
@@ -233,7 +203,7 @@ resource "aws_iam_policy" "secrets_read" {
         ]
         Resource = [
           module.web.os_credentials_secret_arn,
-          aws_secretsmanager_secret.db_credentials.arn
+          module.db.db_credentials_secret_arn
         ]
       }
     ]
@@ -281,14 +251,14 @@ module "web" {
   create_os_credentials_secret = true
 
   user_data = templatefile("${path.module}/scripts/bootstrap_web-static.sh", {
-    db_secret_arn    = aws_secretsmanager_secret.db_credentials.arn
+    db_secret_arn    = "demo/database/static-demo-postgres"
     linux_secret_arn = "demo/linux/web-static"
     aws_region       = var.aws_region
-    db_host          = aws_db_instance.db.address
-    db_port          = tostring(aws_db_instance.db.port)
-    db_name          = aws_db_instance.db.db_name
+    db_host          = module.db.db_instance_address
+    db_port          = tostring(module.db.db_instance_port)
+    db_name          = module.db.db_instance_name
     db_user          = "dbadmin"
-    db_password      = random_password.db_password.result
+    db_password      = module.db.db_instance_password
   })
 
   user_data_replace_on_change = true
@@ -341,24 +311,27 @@ module "db_sg" {
 # RDS — PostgreSQL
 ##############################################################################
 
-resource "aws_db_subnet_group" "db_subnet_group" {
-  name = "public-db-subnets"
+module "db" {
+  source  = "app.terraform.io/benoitblais-hashicorp/db-instance/aws"
+  version = "0.0.1"
 
-  subnet_ids = module.vpc.public_subnets
-}
+  identifier     = "static-demo-postgres"
+  engine         = "postgres"
+  engine_version = "16"
+  instance_class = "db.t3.micro"
 
-resource "aws_db_instance" "db" {
-  identifier        = "static-demo-postgres"
-  engine            = "postgres"
-  engine_version    = "16" # Latest supported major version
-  instance_class    = "db.t3.micro"
   allocated_storage = 20
   db_name           = "appdb"
   username          = "dbadmin"
-  password          = random_password.db_password.result
 
-  publicly_accessible    = true
+  # Network & Subnets
+  create_db_subnet_group = true
+  db_subnet_group_name   = "public-db-subnets"
+  subnet_ids             = module.vpc.public_subnets
   vpc_security_group_ids = [module.db_sg.security_group_id]
-  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
-  skip_final_snapshot    = true
+
+  # Public access and automated Secrets Manager credentials
+  publicly_accessible          = true
+  create_db_credentials_secret = true
+  skip_final_snapshot          = true
 }

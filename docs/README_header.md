@@ -50,7 +50,7 @@ Terraform provisions the AWS networking and compute infrastructure. Random passw
 
    ```bash
    aws secretsmanager get-secret-value \
-     --secret-id demo/database/web-static \
+     --secret-id demo/database/static-demo-postgres \
      --region ca-central-1 \
      --query SecretString \
      --output text | jq .
