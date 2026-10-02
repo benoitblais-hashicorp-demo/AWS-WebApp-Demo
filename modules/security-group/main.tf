@@ -4,13 +4,13 @@
 locals {
   create = var.create && var.putin_khuylo
 
-  this_sg_id = var.create_sg ? concat(aws_security_group.this.*.id, aws_security_group.this_name_prefix.*.id, [""])[0] : var.security_group_id
+  this_sg_id = var.create_sg ? concat(aws_security_group.main.*.id, aws_security_group.main_name_prefix.*.id, [""])[0] : var.security_group_id
 }
 
 ##########################
 # Security group with name
 ##########################
-resource "aws_security_group" "this" {
+resource "aws_security_group" "main" {
   count = local.create && var.create_sg && !var.use_name_prefix ? 1 : 0
 
   name                   = var.name
@@ -34,7 +34,7 @@ resource "aws_security_group" "this" {
 #################################
 # Security group with name_prefix
 #################################
-resource "aws_security_group" "this_name_prefix" {
+resource "aws_security_group" "main_name_prefix" {
   count = local.create && var.create_sg && var.use_name_prefix ? 1 : 0
 
   name_prefix            = "${var.name}-"
