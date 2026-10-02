@@ -104,13 +104,12 @@ Terraform provisions the AWS networking and compute infrastructure. Random passw
 
 ### AWS Provider Authentication
 
-Terraform authenticates to AWS using static credentials supplied as sensitive input variables (`aws_access_key_id` and `aws_secret_access_key`). These should be stored as sensitive workspace variables and never committed to source control.
+Authentication is handled via HCP Terraform Dynamic Provider Credentials. No static AWS credentials are used or required. The HCP Terraform workspace is configured to assume an AWS IAM role using OIDC at plan and apply time.
+
+For local debugging, standard AWS environment variables or a shared credentials file are supported:
 
 ```bash
-# Example: set as environment variables for local runs
 export AWS_ACCESS_KEY_ID="anaccesskey"
 export AWS_SECRET_ACCESS_KEY="asecretkey"
 export AWS_REGION="ca-central-1"
 ```
-
-Alternatively, configure the variables in your HCP Terraform workspace as sensitive Terraform variables.

@@ -1,15 +1,3 @@
-variable "aws_access_key_id" {
-  description = "(Required) AWS access key ID for provider authentication."
-  type        = string
-  sensitive   = true
-}
-
-variable "aws_secret_access_key" {
-  description = "(Required) AWS secret access key for provider authentication."
-  type        = string
-  sensitive   = true
-}
-
 variable "admin_laptop_ip" {
   description = "(Optional) Public IP of your local laptop allowed to connect directly to the EC2 and RDS instances for demo verification. Needs /32 suffix."
   type        = string
