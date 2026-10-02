@@ -119,153 +119,67 @@ export AWS_REGION="ca-central-1"
 
 ## Requirements
 
-The following requirements are needed by this module:
-
-- <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) (>= 1.5.0)
-
-- <a name="requirement_aws"></a> [aws](#requirement\_aws) (~> 5.0)
-
-- <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.6)
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.0 |
+| <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.6 |
 
 ## Modules
 
-The following Modules are called:
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_alb"></a> [alb](#module\_alb) | app.terraform.io/benoitblais-hashicorp/alb/aws | 0.0.2 |
+| <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg) | app.terraform.io/benoitblais-hashicorp/security-group/aws | 0.0.2 |
+| <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg) | app.terraform.io/benoitblais-hashicorp/security-group/aws | 0.0.2 |
+| <a name="module_vpc"></a> [vpc](#module\_vpc) | app.terraform.io/benoitblais-hashicorp/vpc/aws | 0.0.1 |
+| <a name="module_web"></a> [web](#module\_web) | ./modules/ec2-instance | n/a |
+| <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg) | app.terraform.io/benoitblais-hashicorp/security-group/aws | 0.0.2 |
 
-### <a name="module_alb"></a> [alb](#module\_alb)
+## Inputs
 
-Source: app.terraform.io/benoitblais-hashicorp/alb/aws
-
-Version: 0.0.1
-
-### <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg)
-
-Source: ./modules/security-group
-
-Version:
-
-### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
-
-Source: ./modules/security-group
-
-Version:
-
-### <a name="module_vpc"></a> [vpc](#module\_vpc)
-
-Source: app.terraform.io/benoitblais-hashicorp/vpc/aws
-
-Version: 0.0.1
-
-### <a name="module_web"></a> [web](#module\_web)
-
-Source: ./modules/ec2-instance
-
-Version:
-
-### <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg)
-
-Source: ./modules/security-group
-
-Version:
-
-## Required Inputs
-
-No required inputs.
-
-## Optional Inputs
-
-The following input variables are optional (have default values):
-
-### <a name="input_admin_laptop_ip"></a> [admin\_laptop\_ip](#input\_admin\_laptop\_ip)
-
-Description: (Optional) Public IP of your local laptop allowed to connect directly to the EC2 and RDS instances for demo verification. Needs /32 suffix.
-
-Type: `string`
-
-Default: `""`
-
-### <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region)
-
-Description: (Optional) The AWS region to deploy resources into.
-
-Type: `string`
-
-Default: `"ca-central-1"`
-
-### <a name="input_private_hosted_zone"></a> [private\_hosted\_zone](#input\_private\_hosted\_zone)
-
-Description: (Optional) Private Route53 Hosted Zone domain name used for internal DNS records.
-
-Type: `string`
-
-Default: `"benoit-blais.sbx.hashidemos.local"`
-
-### <a name="input_public_hosted_zone"></a> [public\_hosted\_zone](#input\_public\_hosted\_zone)
-
-Description: (Optional) Public Route53 Hosted Zone domain name for ACM certificates and external DNS.
-
-Type: `string`
-
-Default: `"benoit-blais.sbx.hashidemos.io"`
-
-### <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr)
-
-Description: (Optional) The CIDR block for the VPC.
-
-Type: `string`
-
-Default: `"10.0.0.0/16"`
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_admin_laptop_ip"></a> [admin\_laptop\_ip](#input\_admin\_laptop\_ip) | (Optional) Public IP of your local laptop allowed to connect directly to the EC2 and RDS instances for demo verification. Needs /32 suffix. | `string` | `""` | no |
+| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | (Optional) The AWS region to deploy resources into. | `string` | `"ca-central-1"` | no |
+| <a name="input_private_hosted_zone"></a> [private\_hosted\_zone](#input\_private\_hosted\_zone) | (Optional) Private Route53 Hosted Zone domain name used for internal DNS records. | `string` | `"benoit-blais.sbx.hashidemos.local"` | no |
+| <a name="input_public_hosted_zone"></a> [public\_hosted\_zone](#input\_public\_hosted\_zone) | (Optional) Public Route53 Hosted Zone domain name for ACM certificates and external DNS. | `string` | `"benoit-blais.sbx.hashidemos.io"` | no |
+| <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | (Optional) The CIDR block for the VPC. | `string` | `"10.0.0.0/16"` | no |
 
 ## Resources
 
-The following resources are used by this module:
-
-- [aws_acm_certificate.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate) (resource)
-- [aws_acm_certificate_validation.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate_validation) (resource)
-- [aws_db_instance.db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) (resource)
-- [aws_db_subnet_group.db_subnet_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group) (resource)
-- [aws_iam_instance_profile.web_profile](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) (resource)
-- [aws_iam_policy.secrets_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) (resource)
-- [aws_iam_role.web_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) (resource)
-- [aws_iam_role_policy_attachment.secrets_read_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) (resource)
-- [aws_iam_role_policy_attachment.ssm_core_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) (resource)
-- [aws_lb_target_group_attachment.web_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) (resource)
-- [aws_route53_record.public_validation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
-- [aws_route53_record.web_dns_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
-- [aws_secretsmanager_secret.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) (resource)
-- [aws_secretsmanager_secret.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) (resource)
-- [aws_secretsmanager_secret_version.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) (resource)
-- [aws_secretsmanager_secret_version.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) (resource)
-- [random_password.db_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
-- [random_password.os_appuser_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
-- [random_password.os_linuxadmin_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
-- [aws_ami.rhel9](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) (data source)
-- [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) (data source)
-- [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) (data source)
-- [aws_route53_zone.demo](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) (data source)
+| Name | Type |
+|------|------|
+| [aws_db_instance.db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) | resource |
+| [aws_db_subnet_group.db_subnet_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group) | resource |
+| [aws_iam_instance_profile.web_profile](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
+| [aws_iam_policy.secrets_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role.web_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.secrets_read_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.ssm_core_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_lb_target_group_attachment.web_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) | resource |
+| [aws_route53_record.web_dns_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
+| [aws_secretsmanager_secret.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret_version.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_secretsmanager_secret_version.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [random_password.db_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
+| [random_password.os_appuser_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
+| [random_password.os_linuxadmin_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
+| [aws_ami.rhel9](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
+| [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_route53_zone.demo](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
 
 ## Outputs
 
-The following outputs are exported:
-
-### <a name="output_db_credentials_secret_arn"></a> [db\_credentials\_secret\_arn](#output\_db\_credentials\_secret\_arn)
-
-Description: ARN of the Secrets Manager secret containing the RDS database credentials
-
-### <a name="output_linux_credentials_secret_arn"></a> [linux\_credentials\_secret\_arn](#output\_linux\_credentials\_secret\_arn)
-
-Description: ARN of the Secrets Manager secret containing the Linux VM credentials
-
-### <a name="output_rds_endpoint"></a> [rds\_endpoint](#output\_rds\_endpoint)
-
-Description: The endpoint of the RDS instance
-
-### <a name="output_web_public_ip"></a> [web\_public\_ip](#output\_web\_public\_ip)
-
-Description: The public IP of the web server
-
-### <a name="output_website_url"></a> [website\_url](#output\_website\_url)
-
-Description: The final secured URL of your application
+| Name | Description |
+|------|-------------|
+| <a name="output_db_credentials_secret_arn"></a> [db\_credentials\_secret\_arn](#output\_db\_credentials\_secret\_arn) | ARN of the Secrets Manager secret containing the RDS database credentials |
+| <a name="output_linux_credentials_secret_arn"></a> [linux\_credentials\_secret\_arn](#output\_linux\_credentials\_secret\_arn) | ARN of the Secrets Manager secret containing the Linux VM credentials |
+| <a name="output_rds_endpoint"></a> [rds\_endpoint](#output\_rds\_endpoint) | The endpoint of the RDS instance |
+| <a name="output_web_public_ip"></a> [web\_public\_ip](#output\_web\_public\_ip) | The public IP of the web server |
+| <a name="output_website_url"></a> [website\_url](#output\_website\_url) | The final secured URL of your application |
 
 <!-- markdownlint-enable -->
 ## External Documentation

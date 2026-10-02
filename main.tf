@@ -57,43 +57,11 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 }
 
 ##############################################################################
-# ACM — Public Certificate for ALB
+# Route53 Zone Data Discovery
 ##############################################################################
 
 data "aws_route53_zone" "demo" {
   name = var.public_hosted_zone
-}
-
-resource "aws_acm_certificate" "public" {
-  domain_name       = "web-static.${var.public_hosted_zone}"
-  validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_route53_record" "public_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.public.domain_validation_options : dvo.domain_name => {
-      name  = dvo.resource_record_name
-      type  = dvo.resource_record_type
-      value = dvo.resource_record_value
-    }
-  }
-
-  zone_id = data.aws_route53_zone.demo.zone_id
-  name    = each.value.name
-  type    = each.value.type
-  ttl     = 60
-  records = [each.value.value]
-
-  allow_overwrite = true
-}
-
-resource "aws_acm_certificate_validation" "public" {
-  certificate_arn         = aws_acm_certificate.public.arn
-  validation_record_fqdns = [for record in aws_route53_record.public_validation : record.fqdn]
 }
 
 ##############################################################################
@@ -182,7 +150,7 @@ module "web_sg" {
 
 module "alb" {
   source  = "app.terraform.io/benoitblais-hashicorp/alb/aws"
-  version = "0.0.1"
+  version = "0.0.2"
 
   name    = "alb-static"
   vpc_id  = module.vpc.vpc_id
@@ -191,6 +159,11 @@ module "alb" {
   enable_deletion_protection = false
 
   security_groups = [module.alb_sg.security_group_id]
+
+  # Automated ACM Certificate Generation & Route53 Validation
+  create_certificate      = true
+  public_hosted_zone      = var.public_hosted_zone
+  certificate_domain_name = "web-static.${var.public_hosted_zone}"
 
   listeners = {
     http-80 = {
@@ -203,9 +176,8 @@ module "alb" {
       }
     }
     https-443 = {
-      port            = 443
-      protocol        = "HTTPS"
-      certificate_arn = aws_acm_certificate_validation.public.certificate_arn
+      port     = 443
+      protocol = "HTTPS"
       forward = {
         target_group_key = "web-static-tg"
       }
