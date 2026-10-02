@@ -1,128 +1,119 @@
 <!-- BEGIN_TF_DOCS -->
-# HashiCorp Vault Integrations on AWS
+# AWS Native Secrets on AWS
 
-This repository provides an end-to-end Terraform architecture demonstrating HashiCorp Vault integrations on AWS. It orchestrates core AWS infrastructure (VPC, EC2, RDS, ALB) together with a dynamic Vault design focused on KV v2 Linux credentials, dynamic database credentials, and internal PKI.
+This repository provides an end-to-end Terraform architecture demonstrating AWS-native secret management on AWS. It orchestrates core AWS infrastructure (VPC, EC2, RDS, ALB) with all secrets — Linux VM credentials and database credentials — stored and retrieved natively via AWS Secrets Manager.
 
 ## What this demo demonstrates
 
-This demo showcases the power of HashiCorp Vault in centralizing and automating secret management across infrastructure and applications. It highlights the transition from long-lived credentials to ephemeral, Vault-managed secrets that are securely stored, issued, and consumed by workloads.
+This demo showcases how AWS-native services can centralize and automate secret management across infrastructure and applications without a third-party secrets engine. It highlights how EC2 workloads can consume secrets from AWS Secrets Manager using their IAM instance profile, avoiding hardcoded credentials entirely.
 
 ## Features
 
-* **Machine Identity (AWS IAM Auth)**: Secure authentication to Vault using native AWS EC2 IAM instance profiles.
-* **Vault KV v2**: Storage for Linux VM password material used during bootstrap and operational access.
-* **Vault Database Secrets Engine**: Ephemeral PostgreSQL database credentials for zero-trust database access.
-* **Vault PKI (Internal)**: Root and intermediate PKI for private certificate issuance inside the demo namespace.
-* **AWS ACM**: Public-facing ALB certificates managed by AWS Certificate Manager.
+* **AWS Secrets Manager**: Storage for Linux VM credentials and RDS database credentials, retrieved securely at bootstrap and runtime using IAM roles.
+* **AWS IAM Instance Profile**: Least-privilege role granting the EC2 instance access exclusively to its two Secrets Manager secrets.
+* **AWS ACM**: Public-facing ALB certificates managed by AWS Certificate Manager with automated DNS validation via Route53.
+* **AWS SSM Session Manager**: Secure shell access to the EC2 instance without opening inbound SSH to the internet.
 * **HashiCorp Terraform**: Standardized infrastructure-as-code modules for AWS deployments (VPC, EC2, ALB, RDS, Security Groups).
 
 ## Demo Components
 
 * **Network Architecture**: Foundational AWS VPC, Public/Private Subnets, and NAT Gateway.
-* **Web Application**: An EC2 instance securely bootstrapped using Vault-managed credentials and internal certificate material.
+* **Web Application**: An EC2 instance bootstrapped with OS user credentials pulled from Secrets Manager, serving a Flask application that reads database credentials from Secrets Manager at request time.
 * **Database**: An AWS RDS PostgreSQL instance serving as the application backend.
-* **Load Balancing & DNS**: Application Load Balancers securing incoming internet traffic, mapped via Route53.
+* **Load Balancing & DNS**: Application Load Balancer securing incoming internet traffic with an ACM certificate, mapped via Route53.
 
 ## How this demo works
 
-Terraform provisions the AWS networking and compute infrastructure. It also bootstraps the Vault environment, mounting the namespace, KV v2, PKI, AWS auth, and Database Secret engines. The EC2 web server starts up and connects to the PostgreSQL RDS database using dynamically managed credentials, serving a web UI with ACM-backed public TLS and Vault-managed internal trust.
-
-## Demo Value Proposition
-
-1. **Zero Trust Security**: Eliminates static, long-lived SSH keys and database passwords.
-2. **Automated Certificate Lifecycle**: Drastically reduces the operational overhead of internal PKI renewal and provisioning.
-3. **Machine Identity Integration**: Removes the "Secret Zero" problem by using innate cloud identities (AWS IAM) for seamless Vault authentication from the EC2 instance.
-4. **Standardization**: Illustrates the shift to modular, scalable Terraform code managing Vault integrations cleanly.
+Terraform provisions the AWS networking and compute infrastructure. Random passwords are generated for the Linux OS users and the RDS master user. These are stored as JSON documents in two AWS Secrets Manager secrets. The EC2 instance's bootstrap script fetches both secrets via the AWS CLI using its IAM instance profile, sets up the OS users, seeds the database, and starts the Flask web application. The Flask app fetches the database credentials from Secrets Manager on every request using the boto3 SDK and the same IAM role.
 
 ## How to Conduct the Demo
 
-*Prerequisite*: Add your laptop IP to the Terraform `admin_laptop_ip` variable if you want local SSH or database access during the demo.
+*Prerequisite*: Add your laptop IP to the Terraform `admin_laptop_ip` variable if you want local SSH or direct database access during the demo.
 
-1. **Showcase the Dynamic Web App:**
-   Navigate to the `website_url` output (e.g. `https://web-dynamic.benoit-blais.sbx.hashidemos.io`) to show the secured application running correctly with an ACM-backed public certificate.
-2. **Demonstrate OS Access:**
-   * Retrieve the Linux password material from Vault KV v2.
-   * Use the generated credential to SSH into the EC2 instance as needed for demo operations.
-3. **Demonstrate Automated Certificate Rotation:**
-   * **Internal Certificates (Vault PKI)**: In the Vault UI, show the `pki-root` and `pki-intermediate` secret engine mounts.
-   * While connected to the EC2 instance via SSH, run the following command to view the physical bundle managed by the workload:
+1. **Showcase the Web Application:**
+   Navigate to the `website_url` output (e.g. `https://web-static.benoit-blais.sbx.hashidemos.io`) to verify the secured application is running with an ACM-backed public certificate.
 
-     ```bash
-     openssl x509 -in /opt/app/cert.pem -text -noout | grep -A 2 "Validity"
-     ```
+2. **Retrieve Linux Credentials from Secrets Manager:**
+   Run the following AWS CLI command to retrieve the Linux VM credentials stored by Terraform:
 
-   * To prove the web server is actively serving traffic using this certificate, run the following command directly on the EC2 instance to poll the local listener:
+   ```bash
+   aws secretsmanager get-secret-value \
+     --secret-id demo/linux/web-static \
+     --region ca-central-1 \
+     --query SecretString \
+     --output text | jq .
+   ```
 
-     ```bash
-     curl -v --cacert /opt/app/cert.pem https://localhost/ 2>&1 | grep "expire date"
-     ```
+   The output will show the `linuxadmin` and `appuser` passwords. Use the `linuxadmin` credential to SSH into the EC2 instance.
 
-   * If you rotate the internal certificate, rerun the commands to show the updated validity window.
-4. **Demonstrate Dynamic Database Credentials:**
-   * Request a temporary database credential: `vault read database/creds/webapp`
-   * Open pgAdmin4 and create a new connection using the RDS Endpoint output from Terraform as the host.
-   * Use these connection values:
+3. **Inspect Database Credentials in Secrets Manager:**
+   Run the following command to view the database credentials stored at provisioning time:
 
-     ```text
-     Host name/address: <rds_endpoint output>
-     Port: 5432
-     Maintenance database: appdb
-     Username: <username from vault read database/creds/webapp>
-     Password: <password from vault read database/creds/webapp>
-     ```
+   ```bash
+   aws secretsmanager get-secret-value \
+     --secret-id demo/database/web-static \
+     --region ca-central-1 \
+     --query SecretString \
+     --output text | jq .
+   ```
 
-   * After connecting, open the `appdb` database and update the `demo_content` table to showcase real-time read/write access.
-   * Update a record in the `demo_content` table to showcase real-time read/write access:
+   Use the returned values to open a connection in pgAdmin4:
 
-     ```sql
-     UPDATE demo_content SET message = 'Live Vault Demo Successful!' WHERE id = 1;
-     ```
+   ```text
+   Host name/address: <rds_endpoint output>
+   Port:              5432
+   Maintenance database: appdb
+   Username: <username from secret>
+   Password: <password from secret>
+   ```
 
-   * Reload the web page to show the live database update.
-5. **Wait for Expiration:**
-   * Wait a few minutes for the TTL to expire (the default demo database lease is an ultra-short **300s / 5 minutes**), or actively revoke the lease in Vault to forcefully bypass the timer.
-   * Attempt to connect to the database again using the identical dynamic credentials. Access will be explicitly denied, proving zero-trust enforcement.
+4. **Demonstrate Runtime Secret Retrieval:**
+   While connected to the EC2 instance, confirm the application is fetching credentials from Secrets Manager on every request:
+
+   ```bash
+   journalctl -u demo-web --no-pager -n 20
+   ```
+
+   Update a record in the `demo_content` table to showcase live data:
+
+   ```sql
+   UPDATE demo_content SET message = 'Live AWS Secrets Manager Demo Successful!' WHERE id = 1;
+   ```
+
+   Reload the web page to see the updated content.
+
+5. **Verify the ACM Certificate on the ALB:**
+   Open a browser or run the following to confirm the public certificate is valid and issued by ACM:
+
+   ```bash
+   curl -v https://web-static.benoit-blais.sbx.hashidemos.io 2>&1 | grep -E "subject|issuer|expire"
+   ```
 
 ## Expected Behavior
 
-* The web server will output a success message pulling live data from the database.
-* You will be able to retrieve temporary passwords from Vault.
-* Direct database and OS access using expired Vault passwords will be explicitly denied.
+* The web server outputs a success message pulling live data from the database.
+* Linux VM credentials are retrievable from Secrets Manager using authorized AWS CLI access.
+* The Flask application uses boto3 to retrieve database credentials from Secrets Manager on each request — no hardcoded passwords anywhere in the application code.
 
 ## Permissions
 
 ### AWS Provider Permissions
 
-**Required IAM Permissions**: The role or user must have sufficient rights to manage VPCs, Subnets, EC2 Instances, Route53 Zones/Records, Application Load Balancers, Target Groups, ACM Certificates, IAM Roles/Profiles, and RDS instances.
-
-### Vault Provider Permissions
-
-**Required Vault Permissions**: The token must be attached to a policy granting administrative rights to mount secret engines (`sys/mounts/*`), configure `pki`, `kv-v2`, `aws`, and `database` engines, and create corresponding roles and policies.
+**Required IAM Permissions**: The role or user must have sufficient rights to manage VPCs, Subnets, EC2 Instances, Route53 Zones/Records, Application Load Balancers, Target Groups, ACM Certificates, IAM Roles/Policies/Profiles, RDS instances, and Secrets Manager secrets.
 
 ## Authentications
 
 ### AWS Provider Authentication
 
-To provision resources on AWS, Terraform requires authentication. You can authenticate using any of the standard methods supported by the AWS Provider.
+Authentication is handled via HCP Terraform Dynamic Provider Credentials. No static AWS credentials are used or required. The HCP Terraform workspace is configured to assume an AWS IAM role using OIDC at plan and apply time.
 
-* **OIDC via HCP Terraform (Recommended)**: For VCS-driven workflows, configure HCP Terraform to use Dynamic Provider Credentials to assume an AWS IAM role.
-* **Environment Variables**: Export standard AWS credentials for local debugging.
+For local debugging, standard AWS environment variables or a shared credentials file are supported:
 
-  ```bash
-  export AWS_ACCESS_KEY_ID="anaccesskey"
-  export AWS_SECRET_ACCESS_KEY="asecretkey"
-  export AWS_SESSION_TOKEN="asessiontoken" # optional
-  export AWS_REGION="ca-central-1"
-  ```
-
-* **Shared Credentials File**: Use an AWS profile defined in `~/.aws/credentials`.
-
-### Vault Provider Authentication
-
-The `vault` provider authenticates using HCP Terraform dynamic credentials via JWT. No static Vault token is used or required.
-
-* **HCP Terraform / JWT Auth**: The HCP Terraform workspace is configured to authenticate to Vault using a trusted JWT identity. The Vault provider receives a short-lived token automatically at plan and apply time.
-* **Required workspace variables**: `VAULT_ADDR` must be set in the HCP Terraform workspace pointing to your HCP Vault cluster endpoint.
+```bash
+export AWS_ACCESS_KEY_ID="anaccesskey"
+export AWS_SECRET_ACCESS_KEY="asecretkey"
+export AWS_REGION="ca-central-1"
+```
 
 ## Documentation
 
@@ -134,9 +125,7 @@ The following requirements are needed by this module:
 
 - <a name="requirement_aws"></a> [aws](#requirement\_aws) (~> 5.0)
 
-- <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.5.0)
-
-- <a name="requirement_vault"></a> [vault](#requirement\_vault) (>= 4.0.0)
+- <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.6)
 
 ## Modules
 
@@ -150,15 +139,15 @@ Version: 0.0.1
 
 ### <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg)
 
-Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
+Source: ./modules/security-group
 
-Version: 0.0.2
+Version:
 
 ### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
 
-Source: terraform-aws-modules/security-group/aws
+Source: ./modules/security-group
 
-Version: ~> 5.0
+Version:
 
 ### <a name="module_vpc"></a> [vpc](#module\_vpc)
 
@@ -168,31 +157,19 @@ Version: 0.0.1
 
 ### <a name="module_web"></a> [web](#module\_web)
 
-Source: terraform-aws-modules/ec2-instance/aws
+Source: ./modules/ec2-instance
 
-Version: ~> 5.6
+Version:
 
 ### <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg)
 
-Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
+Source: ./modules/security-group
 
-Version: 0.0.2
+Version:
 
 ## Required Inputs
 
-The following input variables are required:
-
-### <a name="input_vault_address"></a> [vault\_address](#input\_vault\_address)
-
-Description: (Required) The URL of your Vault instance.
-
-Type: `string`
-
-### <a name="input_vault_server_ip"></a> [vault\_server\_ip](#input\_vault\_server\_ip)
-
-Description: (Required) The public IP address of the Vault server allowed to access the RDS database.
-
-Type: `string`
+No required inputs.
 
 ## Optional Inputs
 
@@ -200,7 +177,7 @@ The following input variables are optional (have default values):
 
 ### <a name="input_admin_laptop_ip"></a> [admin\_laptop\_ip](#input\_admin\_laptop\_ip)
 
-Description: (Optional) Public IP of your local laptop allowed to connect directly to the RDS instance for demo verification. Needs /32 suffix.
+Description: (Optional) Public IP of your local laptop allowed to connect directly to the EC2 and RDS instances for demo verification. Needs /32 suffix.
 
 Type: `string`
 
@@ -214,17 +191,9 @@ Type: `string`
 
 Default: `"ca-central-1"`
 
-### <a name="input_demo_namespace"></a> [demo\_namespace](#input\_demo\_namespace)
-
-Description: (Optional) Vault namespace path for the demo. Must use lowercase letters, numbers, and underscores, and must start with demo\_.
-
-Type: `string`
-
-Default: `"demo_platform"`
-
 ### <a name="input_private_hosted_zone"></a> [private\_hosted\_zone](#input\_private\_hosted\_zone)
 
-Description: (Optional) Private Route53 Hosted Zone domain name for Vault internal PKI.
+Description: (Optional) Private Route53 Hosted Zone domain name used for internal DNS records.
 
 Type: `string`
 
@@ -232,7 +201,7 @@ Default: `"benoit-blais.sbx.hashidemos.local"`
 
 ### <a name="input_public_hosted_zone"></a> [public\_hosted\_zone](#input\_public\_hosted\_zone)
 
-Description: (Optional) Public Route53 Hosted Zone domain name for Let's Encrypt certificates and external DNS.
+Description: (Optional) Public Route53 Hosted Zone domain name for ACM certificates and external DNS.
 
 Type: `string`
 
@@ -254,44 +223,37 @@ The following resources are used by this module:
 - [aws_acm_certificate_validation.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate_validation) (resource)
 - [aws_db_instance.db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) (resource)
 - [aws_db_subnet_group.db_subnet_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group) (resource)
-- [aws_iam_instance_profile.ssm_profile](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) (resource)
-- [aws_iam_role.ssm_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) (resource)
+- [aws_iam_instance_profile.web_profile](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) (resource)
+- [aws_iam_policy.secrets_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) (resource)
+- [aws_iam_role.web_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) (resource)
+- [aws_iam_role_policy_attachment.secrets_read_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) (resource)
 - [aws_iam_role_policy_attachment.ssm_core_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) (resource)
 - [aws_lb_target_group_attachment.web_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) (resource)
 - [aws_route53_record.public_validation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
 - [aws_route53_record.web_dns_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
-- [aws_route53_record.web_internal_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
+- [aws_secretsmanager_secret.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) (resource)
+- [aws_secretsmanager_secret.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) (resource)
+- [aws_secretsmanager_secret_version.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) (resource)
+- [aws_secretsmanager_secret_version.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) (resource)
 - [random_password.db_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [random_password.os_appuser_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [random_password.os_linuxadmin_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
-- [vault_auth_backend.aws](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/auth_backend) (resource)
-- [vault_aws_auth_backend_client.aws](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/aws_auth_backend_client) (resource)
-- [vault_aws_auth_backend_role.web_agent](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/aws_auth_backend_role) (resource)
-- [vault_database_secret_backend_connection.postgres](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/database_secret_backend_connection) (resource)
-- [vault_database_secret_backend_role.webapp](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/database_secret_backend_role) (resource)
-- [vault_kv_secret_v2.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/kv_secret_v2) (resource)
-- [vault_mount.db](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) (resource)
-- [vault_mount.kvv2](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) (resource)
-- [vault_mount.pki_intermediate](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) (resource)
-- [vault_mount.pki_root](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) (resource)
-- [vault_namespace.demo_platform](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/namespace) (resource)
-- [vault_pki_secret_backend_intermediate_cert_request.pki_intermediate_csr](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_intermediate_cert_request) (resource)
-- [vault_pki_secret_backend_intermediate_set_signed.pki_intermediate_set](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_intermediate_set_signed) (resource)
-- [vault_pki_secret_backend_role.internal_web](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role) (resource)
-- [vault_pki_secret_backend_root_cert.pki_root_ca](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_root_cert) (resource)
-- [vault_pki_secret_backend_root_sign_intermediate.pki_intermediate_signed](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_root_sign_intermediate) (resource)
-- [vault_policy.agent_pki](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) (resource)
-- [vault_policy.linux_credentials_readers](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) (resource)
-- [vault_policy.webapp_db_policy](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) (resource)
 - [aws_ami.rhel9](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) (data source)
 - [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) (data source)
 - [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) (data source)
 - [aws_route53_zone.demo](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) (data source)
-- [aws_route53_zone.internal](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) (data source)
 
 ## Outputs
 
 The following outputs are exported:
+
+### <a name="output_db_credentials_secret_arn"></a> [db\_credentials\_secret\_arn](#output\_db\_credentials\_secret\_arn)
+
+Description: ARN of the Secrets Manager secret containing the RDS database credentials
+
+### <a name="output_linux_credentials_secret_arn"></a> [linux\_credentials\_secret\_arn](#output\_linux\_credentials\_secret\_arn)
+
+Description: ARN of the Secrets Manager secret containing the Linux VM credentials
 
 ### <a name="output_rds_endpoint"></a> [rds\_endpoint](#output\_rds\_endpoint)
 
@@ -306,4 +268,18 @@ Description: The public IP of the web server
 Description: The final secured URL of your application
 
 <!-- markdownlint-enable -->
+## External Documentation
+
+The following external documentation was used to develop this configuration:
+
+* [AWS Provider — Terraform Registry](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+* [AWS Secrets Manager — Developer Guide](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html)
+* [AWS Secrets Manager — Terraform Resource: aws\_secretsmanager\_secret](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret)
+* [AWS IAM — Terraform Resource: aws\_iam\_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy)
+* [AWS Certificate Manager (ACM) — User Guide](https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html)
+* [AWS ACM — Terraform Resource: aws\_acm\_certificate](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate)
+* [AWS RDS PostgreSQL — User Guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html)
+* [AWS EC2 IMDSv2 — Instance Metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)
+* [boto3 Secrets Manager — Python SDK](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/secretsmanager.html)
+* [AWS CLI — get-secret-value](https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/get-secret-value.html)
 <!-- END_TF_DOCS -->
