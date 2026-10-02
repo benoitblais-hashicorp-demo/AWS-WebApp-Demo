@@ -63,18 +63,10 @@ DB_USER=$(echo "$DB_SECRET" | jq -r '.username')
 DB_PASS=$(echo "$DB_SECRET" | jq -r '.password')
 
 # 5. Install Flask and psycopg2 for the Python web app
-pip3 install Flask psycopg2-binary pyOpenSSL cryptography
+pip3 install Flask psycopg2-binary
 
-# 6. Generate a self-signed TLS certificate for internal HTTPS (ALB terminates public TLS via ACM)
-# Include the instance private IP in the SAN so the ALB health check trusts the cert.
+# 6. Prepare the app directory
 mkdir -p /opt/app
-PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout /opt/app/key.pem \
-  -out /opt/app/cert.pem \
-  -subj "/CN=web-static.${private_zone}/O=Demo/C=CA" \
-  -addext "subjectAltName=DNS:web-static.${private_zone},DNS:localhost,IP:127.0.0.1,IP:$PRIVATE_IP"
-chmod 600 /opt/app/key.pem /opt/app/cert.pem
 
 # 7. Seed the Database
 export PGPASSWORD="$DB_PASS"
@@ -142,7 +134,8 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8443, ssl_context=("/opt/app/cert.pem", "/opt/app/key.pem"))
+    # ALB terminates public TLS with ACM; the ALB-to-instance leg runs plain HTTP inside the VPC.
+    app.run(host="0.0.0.0", port=8080)
 EOF_APP
 
 pip3 install boto3
