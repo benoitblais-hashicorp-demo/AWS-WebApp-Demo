@@ -1,39 +1,12 @@
 ##############################################################################
 # AWS Secrets Manager — Core Configuration
-# Stores all secrets natively in AWS: Linux VM credentials and DB password.
+# Stores secrets natively in AWS: DB password.
 ##############################################################################
-
-resource "random_password" "os_linuxadmin_password" {
-  length           = 32
-  special          = true
-  override_special = "-_"
-}
-
-resource "random_password" "os_appuser_password" {
-  length           = 32
-  special          = true
-  override_special = "-_"
-}
 
 resource "random_password" "db_password" {
   length           = 24
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "aws_secretsmanager_secret" "linux_vm_credentials" {
-  name        = "demo/linux/web-static"
-  description = "Linux VM credentials for the web server EC2 instance"
-
-  recovery_window_in_days = 0 # Immediate deletion for demo cleanup
-}
-
-resource "aws_secretsmanager_secret_version" "linux_vm_credentials" {
-  secret_id = aws_secretsmanager_secret.linux_vm_credentials.id
-  secret_string = jsonencode({
-    linuxadmin = random_password.os_linuxadmin_password.result
-    appuser    = random_password.os_appuser_password.result
-  })
 }
 
 resource "aws_secretsmanager_secret" "db_credentials" {
@@ -259,7 +232,7 @@ resource "aws_iam_policy" "secrets_read" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = [
-          aws_secretsmanager_secret.linux_vm_credentials.arn,
+          module.web.os_credentials_secret_arn,
           aws_secretsmanager_secret.db_credentials.arn
         ]
       }
@@ -297,16 +270,19 @@ data "aws_ami" "rhel9" {
 }
 
 module "web" {
-  source = "./modules/ec2-instance"
+  source  = "app.terraform.io/benoitblais-hashicorp/ec2-instance/aws"
+  version = "0.0.1"
 
   name = "web-static"
 
   ami           = data.aws_ami.rhel9.id
   instance_type = "t3.small"
 
+  create_os_credentials_secret = true
+
   user_data = templatefile("${path.module}/scripts/bootstrap_web-static.sh", {
     db_secret_arn    = aws_secretsmanager_secret.db_credentials.arn
-    linux_secret_arn = aws_secretsmanager_secret.linux_vm_credentials.arn
+    linux_secret_arn = "demo/linux/web-static"
     aws_region       = var.aws_region
     db_host          = aws_db_instance.db.address
     db_port          = tostring(aws_db_instance.db.port)

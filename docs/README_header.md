@@ -43,7 +43,7 @@ Terraform provisions the AWS networking and compute infrastructure. Random passw
      --output text | jq .
    ```
 
-   The output will show the `linuxadmin` and `appuser` passwords. Use the `linuxadmin` credential to SSH into the EC2 instance.
+   The output will show the `linuxadmin` password. Use the `linuxadmin` credential to SSH into the EC2 instance.
 
 3. **Inspect Database Credentials in Secrets Manager:**
    Run the following command to view the database credentials stored at provisioning time:

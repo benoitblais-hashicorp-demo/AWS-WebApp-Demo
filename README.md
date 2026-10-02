@@ -44,7 +44,7 @@ Terraform provisions the AWS networking and compute infrastructure. Random passw
      --output text | jq .
    ```
 
-   The output will show the `linuxadmin` and `appuser` passwords. Use the `linuxadmin` credential to SSH into the EC2 instance.
+   The output will show the `linuxadmin` password. Use the `linuxadmin` credential to SSH into the EC2 instance.
 
 3. **Inspect Database Credentials in Secrets Manager:**
    Run the following command to view the database credentials stored at provisioning time:
@@ -133,7 +133,7 @@ export AWS_REGION="ca-central-1"
 | <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg) | app.terraform.io/benoitblais-hashicorp/security-group/aws | 0.0.2 |
 | <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg) | app.terraform.io/benoitblais-hashicorp/security-group/aws | 0.0.2 |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | app.terraform.io/benoitblais-hashicorp/vpc/aws | 0.0.1 |
-| <a name="module_web"></a> [web](#module\_web) | ./modules/ec2-instance | n/a |
+| <a name="module_web"></a> [web](#module\_web) | app.terraform.io/benoitblais-hashicorp/ec2-instance/aws | 0.0.1 |
 | <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg) | app.terraform.io/benoitblais-hashicorp/security-group/aws | 0.0.2 |
 
 ## Inputs
@@ -160,12 +160,8 @@ export AWS_REGION="ca-central-1"
 | [aws_lb_target_group_attachment.web_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) | resource |
 | [aws_route53_record.web_dns_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
 | [aws_secretsmanager_secret.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
-| [aws_secretsmanager_secret.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret_version.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
-| [aws_secretsmanager_secret_version.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
 | [random_password.db_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
-| [random_password.os_appuser_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
-| [random_password.os_linuxadmin_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
 | [aws_ami.rhel9](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |

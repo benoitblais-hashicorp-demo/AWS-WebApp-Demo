@@ -5,7 +5,7 @@ output "db_credentials_secret_arn" {
 
 output "linux_credentials_secret_arn" {
   description = "ARN of the Secrets Manager secret containing the Linux VM credentials"
-  value       = aws_secretsmanager_secret.linux_vm_credentials.arn
+  value       = module.web.os_credentials_secret_arn
 }
 
 output "rds_endpoint" {
