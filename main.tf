@@ -129,7 +129,8 @@ module "vpc" {
 ##############################################################################
 
 module "alb_sg" {
-  source = "./modules/security-group"
+  source  = "app.terraform.io/benoitblais-hashicorp/security-group/aws"
+  version = "0.0.2"
 
   name        = "alb-static-sg"
   description = "Security group for ALB allowing public HTTPS. HTTP is permitted only for 301 redirects."
@@ -145,7 +146,8 @@ module "alb_sg" {
 ##############################################################################
 
 module "web_sg" {
-  source = "./modules/security-group"
+  source  = "app.terraform.io/benoitblais-hashicorp/security-group/aws"
+  version = "0.0.2"
 
   name        = "web-static-sg"
   description = "Security group for web server allowing traffic only from ALB"
@@ -361,7 +363,8 @@ module "web" {
 ##############################################################################
 
 module "db_sg" {
-  source = "./modules/security-group"
+  source  = "app.terraform.io/benoitblais-hashicorp/security-group/aws"
+  version = "0.0.2"
 
   name        = "db-static-sg"
   description = "Security group for RDS allowing Web Server and Admin access"
