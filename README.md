@@ -139,15 +139,15 @@ Version: 0.0.1
 
 ### <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg)
 
-Source: ./modules/security-group
+Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
 
-Version:
+Version: 0.0.2
 
 ### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
 
-Source: ./modules/security-group
+Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
 
-Version:
+Version: 0.0.2
 
 ### <a name="module_vpc"></a> [vpc](#module\_vpc)
 
@@ -163,9 +163,9 @@ Version:
 
 ### <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg)
 
-Source: ./modules/security-group
+Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
 
-Version:
+Version: 0.0.2
 
 ## Required Inputs
 
