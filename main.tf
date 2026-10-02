@@ -155,7 +155,10 @@ module "web_sg" {
 
   ingress_with_source_security_group_id = [
     {
-      rule                     = "https-443-tcp"
+      from_port                = 8443
+      to_port                  = 8443
+      protocol                 = "tcp"
+      description              = "HTTPS from ALB"
       source_security_group_id = module.alb_sg.security_group_id
     }
   ]
@@ -213,7 +216,7 @@ module "alb" {
     web-static-tg = {
       name_prefix       = "webstc"
       protocol          = "HTTPS"
-      port              = 443
+      port              = 8443
       target_type       = "instance"
       create_attachment = false
     }
@@ -223,7 +226,7 @@ module "alb" {
 resource "aws_lb_target_group_attachment" "web_attachment" {
   target_group_arn = module.alb.target_groups["web-static-tg"].arn
   target_id        = module.web.id
-  port             = 443
+  port             = 8443
 }
 
 ##############################################################################
