@@ -329,7 +329,7 @@ module "db" {
   vpc_security_group_ids = [module.db_sg.security_group_id]
 
   # Public access and automated Secrets Manager credentials
-  publicly_accessible          = true
+  publicly_accessible          = false
   create_db_credentials_secret = true
   skip_final_snapshot          = true
 }
