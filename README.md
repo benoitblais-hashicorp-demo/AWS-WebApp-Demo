@@ -147,7 +147,7 @@ Version: 0.0.2
 
 Source: app.terraform.io/benoitblais-hashicorp/db-instance/aws
 
-Version: 0.0.1
+Version: 0.0.2
 
 ### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
 
