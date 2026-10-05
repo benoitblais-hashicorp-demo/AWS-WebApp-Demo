@@ -1,99 +1,10 @@
-##############################################################################
-# AWS Secrets Manager — Core Configuration
-# Stores all secrets natively in AWS: Linux VM credentials and DB password.
-##############################################################################
-
-resource "random_password" "os_linuxadmin_password" {
-  length           = 32
-  special          = true
-  override_special = "-_"
-}
-
-resource "random_password" "os_appuser_password" {
-  length           = 32
-  special          = true
-  override_special = "-_"
-}
-
-resource "random_password" "db_password" {
-  length           = 24
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "aws_secretsmanager_secret" "linux_vm_credentials" {
-  name        = "demo/linux/web-static"
-  description = "Linux VM credentials for the web server EC2 instance"
-
-  recovery_window_in_days = 0 # Immediate deletion for demo cleanup
-}
-
-resource "aws_secretsmanager_secret_version" "linux_vm_credentials" {
-  secret_id = aws_secretsmanager_secret.linux_vm_credentials.id
-  secret_string = jsonencode({
-    linuxadmin = random_password.os_linuxadmin_password.result
-    appuser    = random_password.os_appuser_password.result
-  })
-}
-
-resource "aws_secretsmanager_secret" "db_credentials" {
-  name        = "demo/database/web-static"
-  description = "RDS PostgreSQL master credentials for the demo database"
-
-  recovery_window_in_days = 0 # Immediate deletion for demo cleanup
-}
-
-resource "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = aws_secretsmanager_secret.db_credentials.id
-  secret_string = jsonencode({
-    username = "dbadmin"
-    password = random_password.db_password.result
-    host     = aws_db_instance.db.address
-    port     = tostring(aws_db_instance.db.port)
-    dbname   = aws_db_instance.db.db_name
-  })
-
-  depends_on = [aws_db_instance.db]
-}
 
 ##############################################################################
-# ACM — Public Certificate for ALB
+# Route53 Zone Data Discovery
 ##############################################################################
 
 data "aws_route53_zone" "demo" {
   name = var.public_hosted_zone
-}
-
-resource "aws_acm_certificate" "public" {
-  domain_name       = "web-static.${var.public_hosted_zone}"
-  validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_route53_record" "public_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.public.domain_validation_options : dvo.domain_name => {
-      name  = dvo.resource_record_name
-      type  = dvo.resource_record_type
-      value = dvo.resource_record_value
-    }
-  }
-
-  zone_id = data.aws_route53_zone.demo.zone_id
-  name    = each.value.name
-  type    = each.value.type
-  ttl     = 60
-  records = [each.value.value]
-
-  allow_overwrite = true
-}
-
-resource "aws_acm_certificate_validation" "public" {
-  certificate_arn         = aws_acm_certificate.public.arn
-  validation_record_fqdns = [for record in aws_route53_record.public_validation : record.fqdn]
 }
 
 ##############################################################################
@@ -182,7 +93,7 @@ module "web_sg" {
 
 module "alb" {
   source  = "app.terraform.io/benoitblais-hashicorp/alb/aws"
-  version = "0.0.1"
+  version = "0.0.2"
 
   name    = "alb-static"
   vpc_id  = module.vpc.vpc_id
@@ -191,6 +102,11 @@ module "alb" {
   enable_deletion_protection = false
 
   security_groups = [module.alb_sg.security_group_id]
+
+  # Automated ACM Certificate Generation & Route53 Validation
+  create_certificate      = true
+  public_hosted_zone      = var.public_hosted_zone
+  certificate_domain_name = "web-static.${var.public_hosted_zone}"
 
   listeners = {
     http-80 = {
@@ -203,9 +119,8 @@ module "alb" {
       }
     }
     https-443 = {
-      port            = 443
-      protocol        = "HTTPS"
-      certificate_arn = aws_acm_certificate_validation.public.certificate_arn
+      port     = 443
+      protocol = "HTTPS"
       forward = {
         target_group_key = "web-static-tg"
       }
@@ -287,8 +202,8 @@ resource "aws_iam_policy" "secrets_read" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = [
-          aws_secretsmanager_secret.linux_vm_credentials.arn,
-          aws_secretsmanager_secret.db_credentials.arn
+          module.web.os_credentials_secret_arn,
+          module.db.db_credentials_secret_arn
         ]
       }
     ]
@@ -325,22 +240,25 @@ data "aws_ami" "rhel9" {
 }
 
 module "web" {
-  source = "./modules/ec2-instance"
+  source  = "app.terraform.io/benoitblais-hashicorp/ec2-instance/aws"
+  version = "0.0.1"
 
   name = "web-static"
 
   ami           = data.aws_ami.rhel9.id
   instance_type = "t3.small"
 
+  create_os_credentials_secret = true
+
   user_data = templatefile("${path.module}/scripts/bootstrap_web-static.sh", {
-    db_secret_arn    = aws_secretsmanager_secret.db_credentials.arn
-    linux_secret_arn = aws_secretsmanager_secret.linux_vm_credentials.arn
+    db_secret_arn    = "demo/database/static-demo-postgres"
+    linux_secret_arn = "demo/linux/web-static"
     aws_region       = var.aws_region
-    db_host          = aws_db_instance.db.address
-    db_port          = tostring(aws_db_instance.db.port)
-    db_name          = aws_db_instance.db.db_name
+    db_host          = module.db.db_instance_address
+    db_port          = tostring(module.db.db_instance_port)
+    db_name          = module.db.db_instance_name
     db_user          = "dbadmin"
-    db_password      = random_password.db_password.result
+    db_password      = module.db.db_instance_password
   })
 
   user_data_replace_on_change = true
@@ -393,24 +311,27 @@ module "db_sg" {
 # RDS — PostgreSQL
 ##############################################################################
 
-resource "aws_db_subnet_group" "db_subnet_group" {
-  name = "public-db-subnets"
+module "db" {
+  source  = "app.terraform.io/benoitblais-hashicorp/db-instance/aws"
+  version = "0.0.1"
 
-  subnet_ids = module.vpc.public_subnets
-}
+  identifier     = "static-demo-postgres"
+  engine         = "postgres"
+  engine_version = "16"
+  instance_class = "db.t3.micro"
 
-resource "aws_db_instance" "db" {
-  identifier        = "static-demo-postgres"
-  engine            = "postgres"
-  engine_version    = "16" # Latest supported major version
-  instance_class    = "db.t3.micro"
   allocated_storage = 20
   db_name           = "appdb"
   username          = "dbadmin"
-  password          = random_password.db_password.result
 
-  publicly_accessible    = true
+  # Network & Subnets
+  create_db_subnet_group = true
+  db_subnet_group_name   = "public-db-subnets"
+  subnet_ids             = module.vpc.public_subnets
   vpc_security_group_ids = [module.db_sg.security_group_id]
-  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
-  skip_final_snapshot    = true
+
+  # Public access and automated Secrets Manager credentials
+  publicly_accessible          = true
+  create_db_credentials_secret = true
+  skip_final_snapshot          = true
 }

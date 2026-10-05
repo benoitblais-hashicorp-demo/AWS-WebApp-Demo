@@ -22,16 +22,12 @@ LINUX_SECRET=$(aws secretsmanager get-secret-value \
   --output text)
 
 LINUXADMIN_PASS=$(echo "$LINUX_SECRET" | jq -r '.linuxadmin')
-APPUSER_PASS=$(echo "$LINUX_SECRET" | jq -r '.appuser')
 
 # 3. Setup OS users with passwords retrieved from Secrets Manager
 useradd -m -s /bin/bash linuxadmin
 echo "$LINUXADMIN_PASS" | passwd --stdin linuxadmin
 usermod -aG wheel linuxadmin
 echo "linuxadmin ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/linuxadmin
-
-useradd -m -s /bin/bash appuser
-echo "$APPUSER_PASS" | passwd --stdin appuser
 
 # Enable Password Authentication for SSH
 cat << 'EOF_SSH' > /etc/ssh/sshd_config.d/00-force-password-auth.conf

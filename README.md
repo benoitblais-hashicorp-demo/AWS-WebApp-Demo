@@ -44,14 +44,14 @@ Terraform provisions the AWS networking and compute infrastructure. Random passw
      --output text | jq .
    ```
 
-   The output will show the `linuxadmin` and `appuser` passwords. Use the `linuxadmin` credential to SSH into the EC2 instance.
+   The output will show the `linuxadmin` password. Use the `linuxadmin` credential to SSH into the EC2 instance.
 
 3. **Inspect Database Credentials in Secrets Manager:**
    Run the following command to view the database credentials stored at provisioning time:
 
    ```bash
    aws secretsmanager get-secret-value \
-     --secret-id demo/database/web-static \
+     --secret-id demo/database/static-demo-postgres \
      --region ca-central-1 \
      --query SecretString \
      --output text | jq .
@@ -135,13 +135,19 @@ The following Modules are called:
 
 Source: app.terraform.io/benoitblais-hashicorp/alb/aws
 
-Version: 0.0.1
+Version: 0.0.2
 
 ### <a name="module_alb_sg"></a> [alb\_sg](#module\_alb\_sg)
 
 Source: app.terraform.io/benoitblais-hashicorp/security-group/aws
 
 Version: 0.0.2
+
+### <a name="module_db"></a> [db](#module\_db)
+
+Source: app.terraform.io/benoitblais-hashicorp/db-instance/aws
+
+Version: 0.0.1
 
 ### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
 
@@ -157,9 +163,9 @@ Version: 0.0.1
 
 ### <a name="module_web"></a> [web](#module\_web)
 
-Source: ./modules/ec2-instance
+Source: app.terraform.io/benoitblais-hashicorp/ec2-instance/aws
 
-Version:
+Version: 0.0.1
 
 ### <a name="module_web_sg"></a> [web\_sg](#module\_web\_sg)
 
@@ -219,25 +225,13 @@ Default: `"10.0.0.0/16"`
 
 The following resources are used by this module:
 
-- [aws_acm_certificate.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate) (resource)
-- [aws_acm_certificate_validation.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate_validation) (resource)
-- [aws_db_instance.db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) (resource)
-- [aws_db_subnet_group.db_subnet_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group) (resource)
 - [aws_iam_instance_profile.web_profile](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) (resource)
 - [aws_iam_policy.secrets_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) (resource)
 - [aws_iam_role.web_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) (resource)
 - [aws_iam_role_policy_attachment.secrets_read_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) (resource)
 - [aws_iam_role_policy_attachment.ssm_core_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) (resource)
 - [aws_lb_target_group_attachment.web_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) (resource)
-- [aws_route53_record.public_validation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
 - [aws_route53_record.web_dns_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
-- [aws_secretsmanager_secret.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) (resource)
-- [aws_secretsmanager_secret.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) (resource)
-- [aws_secretsmanager_secret_version.db_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) (resource)
-- [aws_secretsmanager_secret_version.linux_vm_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) (resource)
-- [random_password.db_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
-- [random_password.os_appuser_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
-- [random_password.os_linuxadmin_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [aws_ami.rhel9](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) (data source)
 - [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) (data source)
 - [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) (data source)

@@ -1,1 +1,0 @@
-// This file will contain the test for your variables validation.
