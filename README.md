@@ -147,7 +147,7 @@ Version: 0.0.2
 
 Source: app.terraform.io/benoitblais-hashicorp/db-instance/aws
 
-Version: 0.0.1
+Version: 0.0.2
 
 ### <a name="module_db_sg"></a> [db\_sg](#module\_db\_sg)
 
@@ -234,7 +234,6 @@ The following resources are used by this module:
 - [aws_route53_record.web_dns_record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) (resource)
 - [aws_ami.rhel9](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) (data source)
 - [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) (data source)
-- [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) (data source)
 - [aws_route53_zone.demo](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) (data source)
 
 ## Outputs

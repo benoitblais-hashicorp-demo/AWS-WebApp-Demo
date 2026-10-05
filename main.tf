@@ -164,8 +164,6 @@ resource "aws_route53_record" "web_dns_record" {
 # IAM — EC2 Instance Role (SSM + Secrets Manager read access)
 ##############################################################################
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_iam_role" "web_role" {
   name = "web_static_role"
 
@@ -313,7 +311,7 @@ module "db_sg" {
 
 module "db" {
   source  = "app.terraform.io/benoitblais-hashicorp/db-instance/aws"
-  version = "0.0.1"
+  version = "0.0.2"
 
   identifier     = "static-demo-postgres"
   engine         = "postgres"
